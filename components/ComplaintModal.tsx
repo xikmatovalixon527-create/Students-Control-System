@@ -10,7 +10,8 @@ export function ComplaintModal() {
     complaintStudentId,
     students,
     templates,
-    macrodroidUrl
+    macrodroidUrl,
+    openAlert
   } = useStore();
 
   const [lang, setLang] = useState('ru');
@@ -56,20 +57,33 @@ export function ComplaintModal() {
 
   const handleSend = async () => {
     if (!student || !student.parents) {
-      alert("Нет данных родителя!");
+      openAlert('Ошибка', 'Нет данных родителя (отсутствует номер телефона).', 'error');
       return;
     }
     const phone = student.parents.phone_number;
-    const url = `${macrodroidUrl}?phone=${encodeURIComponent(phone)}&msg=${encodeURIComponent(preview)}`;
     
     setIsSending(true);
     try {
-      await fetch(url, { mode: 'no-cors' }); // Fire and forget to webhook
+      // Send request via internal server API to bypass browser CORS/Adblockers
+      const res = await fetch('/api/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: macrodroidUrl,
+          phone: phone,
+          msg: preview
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error('Server request failed');
+      }
       
       closeComplaintModal();
+      openAlert('Успешно', 'Запрос отправлен!\n\nВАЖНО: Если SMS отправляются только при открытии приложения MacroDroid на телефоне:\n1. Настройки телефона -> Приложения -> MacroDroid\n2. Батарея / Контроль активности -> Выбрать "Нет ограничений"\n3. Разрешить фоновую работу и автозапуск.', 'success');
     } catch (e) {
       console.error(e);
-      alert('Ошибка при отправке: ' + String(e));
+      openAlert('Ошибка отправки', 'Не удалось связаться с сервером MacroDroid. Проверьте адрес Webhook.', 'error');
     } finally {
       setIsSending(false);
     }

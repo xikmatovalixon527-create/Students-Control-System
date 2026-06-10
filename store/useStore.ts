@@ -26,6 +26,11 @@ interface AppState {
   isComplaintModalOpen: boolean;
   complaintStudentId: string | null;
 
+  // Alerts
+  alertDialog: { isOpen: boolean; title: string; message: string; type: 'success' | 'error' | 'info' };
+  openAlert: (title: string, message: string, type?: 'success' | 'error' | 'info') => void;
+  closeAlert: () => void;
+  
   // Actions
   setConfig: (url: string, key: string, macroUrl: string) => void;
   loadConfigFromStorage: () => void;
@@ -71,6 +76,11 @@ export const useStore = create<AppState>((set, get) => ({
 
   isComplaintModalOpen: false,
   complaintStudentId: null,
+
+  alertDialog: { isOpen: false, title: '', message: '', type: 'info' },
+
+  openAlert: (title, message, type = 'info') => set({ alertDialog: { isOpen: true, title, message, type } }),
+  closeAlert: () => set(state => ({ alertDialog: { ...state.alertDialog, isOpen: false } })),
 
   loadConfigFromStorage: () => {
     if (typeof window !== 'undefined') {

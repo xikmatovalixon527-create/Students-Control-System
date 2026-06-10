@@ -7,6 +7,7 @@ import { WorkspaceTab } from '@/components/WorkspaceTab';
 import { AdminTab } from '@/components/AdminTab';
 import { ConfigModal } from '@/components/ConfigModal';
 import { ComplaintModal } from '@/components/ComplaintModal';
+import { AlertDialog } from '@/components/AlertDialog';
 import { AnimatePresence, motion } from 'motion/react';
 
 export default function AppDashboard() {
@@ -37,6 +38,7 @@ export default function AppDashboard() {
 
       <ConfigModal />
       <ComplaintModal />
+      <AlertDialog />
     </div>
   );
 }
