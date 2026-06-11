@@ -258,14 +258,27 @@ export const useStore = create<AppState>((set, get) => ({
     }
     try {
       const res = await supabaseClient.from('parents').insert([record]).select();
-      if (res.data && res.data[0] && role) {
+      if (res.error) {
+        console.warn("Error inserting parent inline with role, falling back...", res.error);
+        const resFallback = await supabaseClient.from('parents').insert([{ full_name: name, phone_number: phone }]).select();
+        if (resFallback.error) {
+          throw resFallback.error;
+        }
+        if (resFallback.data && resFallback.data[0] && role) {
+          localStorage.setItem(`parent_role_${resFallback.data[0].id}`, role);
+        }
+      } else if (res.data && res.data[0] && role) {
         localStorage.setItem(`parent_role_${res.data[0].id}`, role);
       }
     } catch (e) {
-      console.warn("Error inserting parent with role column, falling back", e);
-      const resFallback = await supabaseClient.from('parents').insert([{ full_name: name, phone_number: phone }]).select();
-      if (resFallback.data && resFallback.data[0] && role) {
-        localStorage.setItem(`parent_role_${resFallback.data[0].id}`, role);
+      console.warn("Exception inserting parent with role column, falling back", e);
+      try {
+        const resFallback = await supabaseClient.from('parents').insert([{ full_name: name, phone_number: phone }]).select();
+        if (resFallback.data && resFallback.data[0] && role) {
+          localStorage.setItem(`parent_role_${resFallback.data[0].id}`, role);
+        }
+      } catch (innerError) {
+        console.error("Critical fallback failure adding parent:", innerError);
       }
     }
     get().fetchData();
@@ -295,8 +308,22 @@ export const useStore = create<AppState>((set, get) => ({
     try {
       const res = await supabaseClient.from('students').insert([record]).select();
       
-      // If we succeeded and we have local extra values, save them anyway as fallback backup
-      if (res.data && res.data[0] && (firstArrivalDate || firstPaymentDate)) {
+      if (res.error) {
+        console.warn("Supabase returned error inserting student with date columns:", res.error);
+        const fallbackRecord = {
+          full_name: name,
+          group_id: groupId,
+          parent_id: parentId
+        };
+        const resFallback = await supabaseClient.from('students').insert([fallbackRecord]).select();
+        if (resFallback.data && resFallback.data[0]) {
+          const studentId = resFallback.data[0].id;
+          localStorage.setItem(`student_extras_${studentId}`, JSON.stringify({
+            first_arrival_date: firstArrivalDate,
+            first_payment_date: firstPaymentDate
+          }));
+        }
+      } else if (res.data && res.data[0] && (firstArrivalDate || firstPaymentDate)) {
         const studentId = res.data[0].id;
         localStorage.setItem(`student_extras_${studentId}`, JSON.stringify({
           first_arrival_date: firstArrivalDate,
@@ -304,22 +331,26 @@ export const useStore = create<AppState>((set, get) => ({
         }));
       }
     } catch (e: any) {
-      console.warn("Inserting with date columns failed, trying fallback insert of basic info", e);
+      console.warn("Inserting with date columns failed with exception, trying fallback insert of basic info", e);
       // Fallback: insert only mandatory fields
-      const fallbackRecord = {
-        full_name: name,
-        group_id: groupId,
-        parent_id: parentId
-      };
-      const res = await supabaseClient.from('students').insert([fallbackRecord]).select();
-      
-      // Save dates to client-side localStorage fallback so it compiles and renders without loss!
-      if (res.data && res.data[0]) {
-        const studentId = res.data[0].id;
-        localStorage.setItem(`student_extras_${studentId}`, JSON.stringify({
-          first_arrival_date: firstArrivalDate,
-          first_payment_date: firstPaymentDate
-        }));
+      try {
+        const fallbackRecord = {
+          full_name: name,
+          group_id: groupId,
+          parent_id: parentId
+        };
+        const res = await supabaseClient.from('students').insert([fallbackRecord]).select();
+        
+        // Save dates to client-side localStorage fallback so it compiles and renders without loss!
+        if (res.data && res.data[0]) {
+          const studentId = res.data[0].id;
+          localStorage.setItem(`student_extras_${studentId}`, JSON.stringify({
+            first_arrival_date: firstArrivalDate,
+            first_payment_date: firstPaymentDate
+          }));
+        }
+      } catch (innerError) {
+        console.error("Critical fallback failure adding student:", innerError);
       }
     }
     get().fetchData();
