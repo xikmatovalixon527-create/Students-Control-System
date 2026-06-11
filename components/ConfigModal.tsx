@@ -24,7 +24,7 @@ export function ConfigModal() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setKey(currentKey);
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMacro(currentMacro);
+      setMacro(currentMacro || 'https://trigger.macrodroid.com/be1f65a9-f9aa-41be-8458-dfbc026d2fc2/send_sms');
     }
   }, [isConfigModalOpen, currentUrl, currentKey, currentMacro]);
 

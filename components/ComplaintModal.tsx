@@ -36,8 +36,34 @@ export function ComplaintModal() {
     const studentName = student.full_name || '[Ученик]';
     
     text = text.replace('{ParentName}', parentName)
-               .replace('{StudentName}', studentName)
-               .replace('{Value}', paramValue || '0');
+               .replace('{StudentName}', studentName);
+
+    if (category === 'homework' && (paramValue === '0' || paramValue === '0%' || !paramValue.trim())) {
+      if (lang === 'ru') {
+        text = text.replace(/выполнил домашнее задание всего на \{Value\}%?/gi, 'вообще не сделал домашнее задание');
+        text = text.replace(/выполнил домашнее задание на \{Value\}%?/gi, 'вообще не сделал домашнее задание');
+        text = text.replace(/выполнил д\/з всего на \{Value\}%?/gi, 'вообще не сделал д/з');
+        text = text.replace(/выполнил д\/з на \{Value\}%?/gi, 'вообще не сделал д/з');
+        text = text.replace(/выполнил всего на \{Value\}%?/gi, 'вообще не сделал домашнее задание');
+        text = text.replace(/сделал домашнее задание всего на \{Value\}%?/gi, 'вообще не сделал домашнее задание');
+        text = text.replace(/сделал домашнее задание на \{Value\}%?/gi, 'вообще не сделал домашнее задание');
+        text = text.replace(/всего на \{Value\}%?/gi, 'вообще не сделал домашнее задание');
+        text = text.replace(/выполнил на \{Value\}%?/gi, 'вообще не сделал домашнее задание');
+        if (text.includes('{Value}')) {
+          text = text.replace(/\{Value\}%/g, '0% (вообще не сделал)');
+          text = text.replace(/\{Value\}/g, 'вообще не сделал');
+        }
+      } else {
+        text = text.replace(/uy vazifasini \{Value\}% bajardi/gi, 'uy vazifasini umuman bajarmadi');
+        text = text.replace(/\{Value\}% bajardi/gi, 'umuman bajarmadi');
+        if (text.includes('{Value}')) {
+          text = text.replace(/\{Value\}%/g, '0% (umuman bajarmadi)');
+          text = text.replace(/\{Value\}/g, 'umuman bajarmadi');
+        }
+      }
+    } else {
+      text = text.replace(/\{Value\}/g, paramValue || '0');
+    }
                
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPreview(text);
@@ -155,8 +181,6 @@ export function ComplaintModal() {
                     <option value="lateness">Опоздание</option>
                     <option value="absence_reason">Пропуск (уважит.)</option>
                     <option value="absence_no_reason">Пропуск (без причины)</option>
-                    <option value="absence_general">Пропуск (общее)</option>
-                    <option value="payment_overdue">Оплата просрочена</option>
                     <option value="custom">Свой текст</option>
                   </select>
                 </div>
@@ -173,12 +197,6 @@ export function ComplaintModal() {
                   <div className="space-y-1.5">
                     <label className="block text-[11px] font-medium text-secondary uppercase tracking-widest">Время (минут)</label>
                     <input type="number" min="1" value={paramValue} onChange={e => setParamValue(e.target.value)} placeholder="Минут опоздания" className="w-full bg-background border border-border focus:border-secondary focus:outline-none rounded-lg px-4 py-3 text-sm text-primary" />
-                  </div>
-                )}
-                {category === 'payment_overdue' && (
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-medium text-secondary uppercase tracking-widest">Доп. информация (сумма, месяц)</label>
-                    <input type="text" value={paramValue} onChange={e => setParamValue(e.target.value)} placeholder="Например: за май" className="w-full bg-background border border-border focus:border-secondary focus:outline-none rounded-lg px-4 py-3 text-sm text-primary" />
                   </div>
                 )}
                 {category === 'custom' && (
