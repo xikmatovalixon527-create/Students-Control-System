@@ -53,19 +53,17 @@ export function WorkspaceTab() {
     });
   };
 
-  // Dynamic interval/billing cycle generator based on student registration date
-  const generateCycles = (startStr: string | undefined) => {
+  // Dynamic interval/billing cycle generator based on student registration date (relay style: all paid, plus exactly one unpaid)
+  const generateCycles = (startStr: string | undefined, studentId?: string) => {
     if (!startStr) return [];
     const startDate = parseDate(startStr);
     if (isNaN(startDate.getTime())) return [];
 
     const cycles = [];
-    const today = new Date();
-    
-    // Safety check - if start date is in the deep past, limit periods to avoid overloading UI
     let currentCycleStart = new Date(startDate);
     
-    for (let i = 0; i < 36; i++) {
+    // Safety limit of 120 periods (10 years)
+    for (let i = 0; i < 120; i++) {
       const nextCycleStart = new Date(currentCycleStart);
       nextCycleStart.setMonth(nextCycleStart.getMonth() + 1);
       
@@ -73,6 +71,9 @@ export function WorkspaceTab() {
       const endFormatted = formatShortDate(nextCycleStart);
       const periodLabel = `${startFormatted} — ${endFormatted}`;
       const periodKey = currentCycleStart.toISOString().split('T')[0]; // simple stable key e.g "2026-02-02"
+
+      const paymentRecord = payments.find(p => p.student_id === studentId && p.period_month === periodKey);
+      const isPaid = paymentRecord?.status === 'paid';
 
       cycles.push({
         index: i + 1,
@@ -82,11 +83,19 @@ export function WorkspaceTab() {
         periodKey,
       });
 
-      // Stop once we generate a cycle in the upcoming 30 days
-      const futureCutoff = new Date(today);
-      futureCutoff.setDate(futureCutoff.getDate() + 30);
-      if (currentCycleStart > futureCutoff) {
+      // Stop once we generate a cycle that is unpaid (Relay: only one active unpaid cycle is visible at a time)
+      if (studentId && !isPaid) {
         break;
+      }
+
+      // If no student ID is provided, fallback to standard time-based generation up to today + 30 days
+      if (!studentId) {
+        const today = new Date();
+        const futureCutoff = new Date(today);
+        futureCutoff.setDate(futureCutoff.getDate() + 30);
+        if (currentCycleStart > futureCutoff) {
+          break;
+        }
       }
       
       currentCycleStart = nextCycleStart;
@@ -100,7 +109,7 @@ export function WorkspaceTab() {
     const sDate = student.first_arrival_date || student.first_payment_date;
     if (!sDate) return 'no_date';
 
-    const cycles = generateCycles(sDate);
+    const cycles = generateCycles(sDate, student.id);
     const today = new Date();
     let hasOverdue = false;
 
@@ -388,7 +397,7 @@ export function WorkspaceTab() {
                           </div>
                         ) : (
                           <div className="space-y-4">
-                            {generateCycles(selectedStudent.first_arrival_date).map((cycle) => {
+                            {generateCycles(selectedStudent.first_arrival_date, selectedStudent.id).map((cycle) => {
                               const paymentRecord = payments.find(p => p.student_id === selectedStudent.id && p.period_month === cycle.periodKey);
                               const isPaid = paymentRecord?.status === 'paid';
                               const today = new Date();
@@ -428,9 +437,11 @@ export function WorkspaceTab() {
                                     </p>
                                     
                                     {isPaid ? (
-                                      <p className="text-xs text-secondary font-semibold flex items-center gap-1">
-                                        💰 Взнос: <b className="text-[#eee] font-bold font-mono">{paymentRecord?.amount?.toLocaleString() || '500 000'} сум</b> {paymentRecord?.payment_date && `(${paymentRecord.payment_date})`}
-                                      </p>
+                                      paymentRecord?.payment_date ? (
+                                        <p className="text-xs text-secondary font-semibold">
+                                          Дата оплаты: <span className="font-mono text-emerald-400">{paymentRecord.payment_date}</span>
+                                        </p>
+                                      ) : null
                                     ) : isOverdue ? (
                                       <p className="text-xs text-red-400 font-semibold tracking-tight py-1 bg-red-500/5 rounded border border-red-500/10 px-2 inline-block">
                                         ⚠️ Не оплачено. Просрочка: {(() => {
@@ -450,16 +461,7 @@ export function WorkspaceTab() {
                                   {/* Action Buttons with edit options */}
                                   <div className="w-full sm:w-auto shrink-0 select-none">
                                     {isEditing ? (
-                                      <div className="bg-surface border border-border p-3 rounded-lg space-y-3 w-full sm:w-64">
-                                        <div>
-                                          <label className="block text-[10px] uppercase font-bold text-secondary mb-1 font-mono">Сумма (сум):</label>
-                                          <input 
-                                            type="number"
-                                            value={customAmount}
-                                            onChange={e => setCustomAmount(Number(e.target.value))}
-                                            className="w-full bg-background border border-border text-xs rounded px-2 py-1.5 text-primary font-mono focus:outline-none focus:border-secondary"
-                                          />
-                                        </div>
+                                      <div className="bg-surface border border-border p-3 rounded-lg space-y-3 w-full sm:w-56">
                                         <div>
                                           <label className="block text-[10px] uppercase font-bold text-secondary mb-1 font-mono">Дата:</label>
                                           <input 

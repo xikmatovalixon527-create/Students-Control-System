@@ -64,12 +64,15 @@ interface AppState {
   
   // Admin Operations
   addGroup: (name: string) => Promise<void>;
+  updateGroup: (id: string, name: string) => Promise<void>;
   deleteGroup: (id: string) => Promise<void>;
   
   addParent: (name: string, phone: string, role?: string) => Promise<void>;
+  updateParent: (id: string, name: string, phone: string, role?: string) => Promise<void>;
   deleteParent: (id: string) => Promise<void>;
   
   addStudent: (name: string, groupId: string, parentId: string, firstArrivalDate?: string, firstPaymentDate?: string) => Promise<void>;
+  updateStudent: (id: string, name: string, groupId: string, parentId: string, firstArrivalDate?: string, firstPaymentDate?: string) => Promise<void>;
   deleteStudent: (id: string) => Promise<void>;
   
   // Tracking Operations
@@ -208,6 +211,12 @@ export const useStore = create<AppState>((set, get) => ({
     await supabaseClient.from('groups').insert([{ name }]);
     get().fetchData();
   },
+  updateGroup: async (id, name) => {
+    const { supabaseClient } = get();
+    if (!supabaseClient) return;
+    await supabaseClient.from('groups').update({ name }).eq('id', id);
+    get().fetchData();
+  },
   deleteGroup: async (id) => {
     const { supabaseClient, selectedGroupId } = get();
     if (!supabaseClient) return;
@@ -221,6 +230,13 @@ export const useStore = create<AppState>((set, get) => ({
     if (!supabaseClient) return;
     const record: any = { full_name: name, phone_number: phone, role };
     await supabaseClient.from('parents').insert([record]);
+    get().fetchData();
+  },
+  updateParent: async (id, name, phone, role) => {
+    const { supabaseClient } = get();
+    if (!supabaseClient) return;
+    const record: any = { full_name: name, phone_number: phone, role };
+    await supabaseClient.from('parents').update(record).eq('id', id);
     get().fetchData();
   },
   deleteParent: async (id) => {
@@ -243,6 +259,21 @@ export const useStore = create<AppState>((set, get) => ({
     };
 
     await supabaseClient.from('students').insert([record]);
+    get().fetchData();
+  },
+  updateStudent: async (id, name, groupId, parentId, firstArrivalDate, firstPaymentDate) => {
+    const { supabaseClient } = get();
+    if (!supabaseClient) return;
+
+    const record: any = {
+      full_name: name,
+      group_id: groupId,
+      parent_id: parentId,
+      first_arrival_date: firstArrivalDate || null,
+      first_payment_date: firstPaymentDate || null
+    };
+
+    await supabaseClient.from('students').update(record).eq('id', id);
     get().fetchData();
   },
   deleteStudent: async (id) => {

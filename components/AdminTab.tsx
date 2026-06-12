@@ -3,7 +3,7 @@ import { useStore } from '@/store/useStore';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, UserPlus, Database, Plus, Trash2, Search,
-  AlertCircle, ArrowLeft, PlusCircle
+  AlertCircle, ArrowLeft, PlusCircle, Edit
 } from 'lucide-react';
 
 type SubTab = 'registry' | 'register' | 'groups' | 'parents';
@@ -11,9 +11,9 @@ type SubTab = 'registry' | 'register' | 'groups' | 'parents';
 export function AdminTab() {
   const { 
     groups, parents, students,
-    addGroup, deleteGroup,
-    addParent, deleteParent,
-    addStudent, deleteStudent,
+    addGroup, updateGroup, deleteGroup,
+    addParent, updateParent, deleteParent,
+    addStudent, updateStudent, deleteStudent,
     connectionError
   } = useStore();
 
@@ -33,6 +33,49 @@ export function AdminTab() {
   
   // Combined single date input state for both arrival and payment
   const [unifiedStartDate, setUnifiedStartDate] = useState('');
+
+  // Editing states
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
+
+  const [editingParentId, setEditingParentId] = useState<string | null>(null);
+  const [editingParentName, setEditingParentName] = useState('');
+  const [editingParentPhone, setEditingParentPhone] = useState('');
+  const [editingParentRole, setEditingParentRole] = useState('');
+
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
+  const [editingStudentName, setEditingStudentName] = useState('');
+  const [editingStudentGroup, setEditingStudentGroup] = useState('');
+  const [editingStudentParent, setEditingStudentParent] = useState('');
+  const [editingStudentDate, setEditingStudentDate] = useState('');
+
+  const handleUpdateGroup = async (id: string) => {
+    if (editingGroupName.trim()) {
+      await updateGroup(id, editingGroupName);
+      setEditingGroupId(null);
+    }
+  };
+
+  const handleUpdateParent = async (id: string) => {
+    if (editingParentName.trim() && editingParentPhone.trim()) {
+      await updateParent(id, editingParentName, editingParentPhone, editingParentRole);
+      setEditingParentId(null);
+    }
+  };
+
+  const handleUpdateStudent = async (id: string) => {
+    if (editingStudentName.trim() && editingStudentGroup && editingStudentParent) {
+      await updateStudent(
+        id,
+        editingStudentName,
+        editingStudentGroup,
+        editingStudentParent,
+        editingStudentDate || undefined,
+        editingStudentDate || undefined
+      );
+      setEditingStudentId(null);
+    }
+  };
 
   // Table search and filters
   const [studentSearch, setStudentSearch] = useState('');
@@ -228,31 +271,106 @@ export function AdminTab() {
                       </tr>
                     ) : (
                       filteredStudents.map((s) => (
-                        <tr key={s.id} className="table-row-hover group/stdrow">
-                          <td className="py-4.5 px-4 font-bold text-base text-primary">{s.full_name}</td>
-                          <td className="py-4.5 px-4 font-medium text-secondary">{s.groups?.name || <span className="text-secondary/50">—</span>}</td>
-                          <td className="py-4.5 px-4 text-secondary">
-                            <div>
-                              <span className="font-semibold">{s.parents?.full_name || <span className="text-secondary">—</span>}</span>
-                              {s.parents?.phone_number && (
-                                <p className="text-[10px] text-secondary/70 font-mono mt-0.5">{s.parents.phone_number}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-4.5 px-4 text-secondary text-xs font-mono text-center">
-                            <span className="bg-[#0f0f0f] border border-border/80 px-2.5 py-1.5 rounded-lg text-emerald-400 font-bold block max-w-[160px] mx-auto">
-                              🗓 {s.first_arrival_date || s.first_payment_date || 'Не привязана'}
-                            </span>
-                          </td>
-                          <td className="py-4.5 px-4 text-right">
-                            <button 
-                              onClick={() => deleteStudent(s.id)} 
-                              className="opacity-0 group-hover/stdrow:opacity-100 text-secondary hover:text-error transition-all p-1.5 rounded-full hover:bg-red-500/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
+                        editingStudentId === s.id ? (
+                          <tr key={s.id} className="bg-[#111] border-b border-border">
+                            <td className="p-4" colSpan={5}>
+                              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] uppercase font-bold text-secondary font-mono">ФИО Ученика</label>
+                                  <input 
+                                    type="text"
+                                    value={editingStudentName}
+                                    onChange={e => setEditingStudentName(e.target.value)}
+                                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-primary focus:outline-none"
+                                  />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] uppercase font-bold text-secondary font-mono">Группа</label>
+                                  <select 
+                                    value={editingStudentGroup}
+                                    onChange={e => setEditingStudentGroup(e.target.value)}
+                                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-primary focus:outline-none"
+                                  >
+                                    {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                                  </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] uppercase font-bold text-secondary font-mono">Родитель</label>
+                                  <select 
+                                    value={editingStudentParent}
+                                    onChange={e => setEditingStudentParent(e.target.value)}
+                                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-xs text-primary focus:outline-none"
+                                  >
+                                    {parents.map(p => <option key={p.id} value={p.id}>{p.full_name} ({p.phone_number})</option>)}
+                                  </select>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <label className="text-[10px] uppercase font-bold text-secondary font-mono">Дата первого занятия</label>
+                                  <div className="flex gap-2">
+                                    <input 
+                                      type="date"
+                                      value={editingStudentDate}
+                                      onChange={e => setEditingStudentDate(e.target.value)}
+                                      className="bg-background border border-border rounded-lg px-2 py-2 text-xs text-primary font-mono flex-grow focus:outline-none"
+                                    />
+                                    <button 
+                                      onClick={() => handleUpdateStudent(s.id)}
+                                      className="bg-accent hover:bg-accent-hover text-background text-xs font-bold px-3 py-2 rounded-lg transition-all"
+                                    >
+                                      Ок
+                                    </button>
+                                    <button 
+                                      onClick={() => setEditingStudentId(null)}
+                                      className="border border-border text-secondary text-xs px-3 py-2 rounded-lg hover:text-primary transition-all"
+                                    >
+                                      Отмена
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={s.id} className="table-row-hover group/stdrow">
+                            <td className="py-4.5 px-4 font-bold text-base text-primary">{s.full_name}</td>
+                            <td className="py-4.5 px-4 font-medium text-secondary">{s.groups?.name || <span className="text-secondary/50">—</span>}</td>
+                            <td className="py-4.5 px-4 text-secondary">
+                              <div>
+                                <span className="font-semibold">{s.parents?.full_name || <span className="text-secondary">—</span>}</span>
+                                {s.parents?.phone_number && (
+                                  <p className="text-[10px] text-secondary/70 font-mono mt-0.5">{s.parents.phone_number}</p>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-4.5 px-4 text-secondary text-xs font-mono text-center">
+                              <span className="bg-[#0f0f0f] border border-border/80 px-2.5 py-1.5 rounded-lg text-emerald-400 font-bold block max-w-[160px] mx-auto">
+                                🗓 {s.first_arrival_date || s.first_payment_date || 'Не привязана'}
+                              </span>
+                            </td>
+                            <td className="py-4.5 px-4 text-right">
+                              <div className="flex gap-1 justify-end">
+                                <button 
+                                  onClick={() => {
+                                    setEditingStudentId(s.id);
+                                    setEditingStudentName(s.full_name);
+                                    setEditingStudentGroup(s.group_id || '');
+                                    setEditingStudentParent(s.parent_id || '');
+                                    setEditingStudentDate(s.first_arrival_date || s.first_payment_date || '');
+                                  }}
+                                  className="opacity-0 group-hover/stdrow:opacity-100 text-secondary hover:text-accent transition-all p-1.5 rounded-full hover:bg-accent/10"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </button>
+                                <button 
+                                  onClick={() => deleteStudent(s.id)} 
+                                  className="opacity-0 group-hover/stdrow:opacity-100 text-secondary hover:text-error transition-all p-1.5 rounded-full hover:bg-red-500/10"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
                       ))
                     )}
                   </tbody>
@@ -422,17 +540,53 @@ export function AdminTab() {
                   {groups.map(g => {
                     const groupStudentsCount = students.filter(s => s.group_id === g.id).length;
                     return (
-                      <div key={g.id} className="flex justify-between items-center py-4 group/row">
-                        <div>
-                          <p className="text-sm font-semibold text-primary">{g.name}</p>
-                          <p className="text-xs text-secondary mt-0.5">{groupStudentsCount} студентов привязано</p>
-                        </div>
-                        <button 
-                          onClick={() => deleteGroup(g.id)}
-                          className="opacity-0 group-hover/row:opacity-100 text-secondary hover:text-error transition-all p-2 rounded-full hover:bg-red-500/10"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div key={g.id} className="py-4">
+                        {editingGroupId === g.id ? (
+                          <div className="flex gap-2 items-center">
+                            <input 
+                              type="text"
+                              value={editingGroupName}
+                              onChange={e => setEditingGroupName(e.target.value)}
+                              className="bg-background border border-border focus:border-secondary focus:outline-none rounded-lg px-3 py-1.5 text-sm text-primary flex-grow font-semibold"
+                            />
+                            <button 
+                              onClick={() => handleUpdateGroup(g.id)}
+                              className="bg-accent hover:bg-accent-hover text-background text-xs font-bold py-1.5 px-3 rounded-lg"
+                            >
+                              Ок
+                            </button>
+                            <button 
+                              onClick={() => setEditingGroupId(null)}
+                              className="border border-border text-secondary text-xs py-1.5 px-3 rounded-lg hover:text-primary"
+                            >
+                              Отмена
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between items-center group/row">
+                            <div>
+                              <p className="text-sm font-semibold text-primary">{g.name}</p>
+                              <p className="text-xs text-secondary mt-0.5">{groupStudentsCount} студентов привязано</p>
+                            </div>
+                            <div className="flex gap-1">
+                              <button 
+                                onClick={() => {
+                                  setEditingGroupId(g.id);
+                                  setEditingGroupName(g.name);
+                                }}
+                                className="opacity-0 group-hover/row:opacity-100 text-secondary hover:text-accent transition-all p-2 rounded-full hover:bg-accent/10"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button 
+                                onClick={() => deleteGroup(g.id)}
+                                className="opacity-0 group-hover/row:opacity-100 text-secondary hover:text-error transition-all p-2 rounded-full hover:bg-red-500/10"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -528,25 +682,88 @@ export function AdminTab() {
                     </thead>
                     <tbody className="divide-y divide-border/40 text-xs text-primary">
                       {parents.map(p => (
-                        <tr key={p.id} className="group/prow hover:bg-background/40 transition-colors">
-                          <td className="py-3.5 px-3 font-medium flex items-center gap-2">
-                            <span>{p.full_name}</span>
-                            {p.role && (
-                              <span className="text-[10px] bg-accent/20 text-accent border border-accent/20 px-2 py-0.5 rounded-full font-bold">
-                                {p.role}
-                              </span>
-                            )}
-                          </td>
-                          <td className="py-3.5 px-3 font-mono text-secondary">{p.phone_number}</td>
-                          <td className="py-3.5 px-3 text-right">
-                            <button 
-                              onClick={() => deleteParent(p.id)}
-                              className="opacity-0 group-hover/prow:opacity-100 text-secondary hover:text-error transition-all p-1"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
+                        editingParentId === p.id ? (
+                          <tr key={p.id} className="bg-background/25">
+                            <td className="py-3 px-3" colSpan={3}>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end p-2 border border-border/40 rounded-xl">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] uppercase font-bold text-secondary font-mono">ФИО</label>
+                                  <input 
+                                    type="text"
+                                    value={editingParentName}
+                                    onChange={e => setEditingParentName(e.target.value)}
+                                    className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-primary focus:outline-none focus:border-secondary"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] uppercase font-bold text-secondary font-mono">Телефон</label>
+                                  <input 
+                                    type="text"
+                                    value={editingParentPhone}
+                                    onChange={e => setEditingParentPhone(e.target.value)}
+                                    className="w-full bg-background border border-border rounded px-2.5 py-1.5 text-xs text-primary font-mono focus:outline-none focus:border-secondary"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[9px] uppercase font-bold text-secondary font-mono">Роль</label>
+                                  <div className="flex gap-1.5">
+                                    <input 
+                                      type="text"
+                                      value={editingParentRole}
+                                      onChange={e => setEditingParentRole(e.target.value)}
+                                      className="bg-background border border-border rounded px-2.5 py-1.5 text-xs text-primary flex-grow focus:outline-none focus:border-secondary"
+                                    />
+                                    <button 
+                                      onClick={() => handleUpdateParent(p.id)}
+                                      className="bg-accent hover:bg-accent-hover text-background text-xs font-bold px-3 py-1.5 rounded-md shrink-0"
+                                    >
+                                      Да
+                                    </button>
+                                    <button 
+                                      onClick={() => setEditingParentId(null)}
+                                      className="border border-border text-secondary text-xs px-2.5 py-1.5 rounded-md hover:text-primary shrink-0"
+                                    >
+                                      Нет
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          <tr key={p.id} className="group/prow hover:bg-background/40 transition-colors">
+                            <td className="py-3.5 px-3 font-medium flex items-center gap-2">
+                              <span>{p.full_name}</span>
+                              {p.role && (
+                                <span className="text-[10px] bg-accent/20 text-accent border border-accent/20 px-2 py-0.5 rounded-full font-bold">
+                                  {p.role}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3.5 px-3 font-mono text-secondary">{p.phone_number}</td>
+                            <td className="py-3.5 px-3 text-right">
+                              <div className="flex gap-1 justify-end">
+                                <button 
+                                  onClick={() => {
+                                    setEditingParentId(p.id);
+                                    setEditingParentName(p.full_name);
+                                    setEditingParentPhone(p.phone_number);
+                                    setEditingParentRole(p.role || '');
+                                  }}
+                                  className="opacity-0 group-hover/prow:opacity-100 text-secondary hover:text-accent transition-all p-1 rounded-full hover:bg-accent/10"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button 
+                                  onClick={() => deleteParent(p.id)}
+                                  className="opacity-0 group-hover/prow:opacity-100 text-secondary hover:text-error transition-all p-1 rounded-full hover:bg-red-500/10"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
                       ))}
                       {parents.length === 0 && (
                         <tr>
